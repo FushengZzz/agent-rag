@@ -1,0 +1,10 @@
+# 核心依赖（W0-W1 已确认可用）
+openai==3.49.0
+python-dotenv
+fastapi==0.162.4
+uvicorn[standard]
+
+# 本地 embedding（DeepSeek 无 embedding 接口，故走本地 BGE）
+sentence-transformers
+
+# W2 起按需追加：rank_bm25, pypdf, chromadb / pgvector

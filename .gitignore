@@ -1,0 +1,30 @@
+# 密钥
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 本地数据：向量库、索引、缓存（可重建，不入库）
+data/*.npz
+data/*.jsonl
+data/append-excluded/
+chroma_db/
+*.sqlite3
+.cache/
+
+# 注意：data/raw 和 data/append 必须入库 —— 语料只有 140K，
+# 别人 clone 下来才能复现你的评测结果。
+
+# 模型缓存（很大，绝不入库）
+models/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+eval/result_*.json
