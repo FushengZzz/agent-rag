@@ -28,3 +28,7 @@ models/
 Thumbs.db
 
 eval/result_*.json
+
+eval/clean_corpus.py
+eval/corpus_audit.py
+eval/final_metrics.py

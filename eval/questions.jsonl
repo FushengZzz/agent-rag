@@ -1,0 +1,10 @@
+{"id": "Q1", "group": "v1", "question": "RAG 切分的常见起点是多大的块？重叠比例设多少？", "keys_all": ["300", "800", "10%", "15%"], "expected_source": "rag-faq.md", "note": "数字实体全含即算命中，避开「到/～/-」标点差异"}
+{"id": "Q2", "group": "v1", "question": "检索不准时加 rerank，标准做法是先向量召回多少条、再精排取多少条？", "keys": ["召回 20 条", "精排取 5 条"], "expected_source": "rag-faq.md", "note": ""}
+{"id": "Q3", "group": "v1", "question": "按文档说法，绝大多数召回不准其实是什么问题？", "keys_all": ["切分问题"], "expected_source": "rag-faq.md", "note": "「不是/并非模型问题」属同义改写，只保留核心实体"}
+{"id": "Q4", "group": "v1", "question": "建评测集时，应该从真实文档里人工写多少个问题？", "keys": ["30 到 50"], "expected_source": "rag-faq.md", "note": ""}
+{"id": "Q5", "group": "v1", "question": "Agent 的长期记忆需要哪四个环节？", "keys_all": ["抽取","去重","存储","召回"], "expected_source": "agent-patterns.md", "note": ""}
+{"id": "Q6", "group": "v1", "question": "防止 Agent 绕圈，文档给出了哪两类机制？", "keys": ["记录已调用过的工具和参数组合", "最大步数"], "expected_source": "agent-patterns.md", "note": ""}
+{"id": "Q7", "group": "v2", "question": "DeepSeek 文档列出的两个模型分别是什么？", "keys_all": ["deepseek-flash", "deepseek-v4-pro"], "expected_source": "deepseek-pricing.md", "note": "原题的'有没有 embedding 接口'是推断句，语料无原文，已从自动评测中移除，改为人工检查"}
+{"id": "Q8", "group": "v2", "question": "sentence-transformers 官方 README 的快速上手示例加载的是哪个模型？", "keys": ["all-MiniLM-L6-v2"], "expected_source": "sentence-transformers.md", "note": ""}
+{"id": "Q9", "group": "v2", "question": "DeepSeek Chat Completions 的 temperature 参数取值范围是多少？思考模式下生效吗？", "keys": ["0 和 2", "0 到 2", "0~2", "0-2", "0至2"], "expected_source": "deepseek-api-create-chat-completion.md", "note": "同一句也出现在 create-completion，所以判定必须校验 source"}
+{"id": "Q10", "group": "v2", "question": "FastAPI 的 web 部分和数据部分分别基于哪个库？", "keys": ["Starlette", "Pydantic"], "expected_source": "fastapi.md", "note": ""}
