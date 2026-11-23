@@ -1,99 +1,126 @@
-# 评测基线（10 题）
+# 评测基线（10 题 · 终版）
 
-- **用法**：before = `index_v1`（只入库 data/raw，7 块）；after = `index_v2`（raw + append 29 篇，实测 175 块）。索引与 chunks 成对版本化（index_v1.npz↔chunks_v1.jsonl、index_v2.npz↔chunks_v2.jsonl），评测用 `--index` 指定，绝不读全局缓存。
-- **判定口径（L1）**：Hit@1 = top-1 块所属文件 == 预期 source；Recall@5 = top-5 内正确 source 的块含 key。
-- **判定口径（L2）**：答案命中 = `keys_all` 全含 / `keys` 任一，匹配前两侧归一化（去 `**`、去空白）；**虚构引用 = 答案中出现的 .md 文件名不在本轮检索 sources 里**（措辞与 key 不同 ≠ 幻觉；纯 `[数字]` 脚注无法对名，只记 cited 不记虚构）。
-- **答案可核对性**：所有预期答案均已核对自语料原文（抓取 2026-11-21）。无开放题。
-- **Q7–Q10 预期**：before 不命中（语料不在库）；after 应命中——实测 Q10 ✓，Q7/Q9 正确块进了 top-5 但 top-1 被相近内容挤掉，Q8 未召回（见结论）。
+> 终版更新：2026-11-22。三份原始输出在 `eval/result_v1.json`、`result_v2.json`、`result_l2.json`。
 
-| 编号 | 问题 | 预期答案 | 预期命中 source | before top-1 | after top-1 |
-| --- | --- | --- | --- | --- | --- |
-| Q1 | RAG 切分的常见起点是多大的块？重叠比例设多少？ | 300 到 800 字，重叠 10% 到 15% | data/raw/rag-faq.md | rag-faq.md#0 ✓ | rag-faq.md#0 ✓ |
-| Q2 | 检索不准时加 rerank，标准做法是先向量召回多少条、再精排取多少条？ | 先向量召回 20 条，再用交叉编码器精排取 5 条 | data/raw/rag-faq.md | rag-faq.md#1 ✓ | rag-faq.md#1 ✓ |
-| Q3 | 按文档说法，绝大多数"召回不准"其实是什么问题？ | 切分问题，不是模型问题 | data/raw/rag-faq.md | rag-faq.md#1 ✓ | rag-faq.md#1 ✓ |
-| Q4 | 建评测集时，应该从真实文档里人工写多少个问题？ | 30 到 50 个 | data/raw/rag-faq.md | rag-faq.md#2 ✓ | rag-faq.md#2 ✓ |
-| Q5 | Agent 的长期记忆需要哪四个环节？ | 抽取、去重、存储、召回 | data/raw/agent-patterns.md | agent-patterns.md#2 ✓ | agent-patterns.md#2 ✓ |
-| Q6 | 防止 Agent 绕圈，文档给出了哪两类机制？ | ①记录已调用的工具和参数组合，相同调用第二次直接拦截；②设置最大步数上限，超限强制收尾 | data/raw/agent-patterns.md | agent-patterns.md#0 ✓ | agent-patterns.md#0 ✓ |
-| Q7 | DeepSeek 官方 pricing 页列出的两个模型分别是什么？ | deepseek-flash 和 deepseek-v4-pro | data/append/deepseek-pricing.md | agent-patterns.md#0 ✗ | news261113.md#5 ✗（正确块在 top-5，被 news 挤掉；题干已加"pricing 页"限定，待重测） |
-| Q8 | sentence-transformers 官方 README 的快速上手示例加载的是哪个模型？ | sentence-transformers/all-MiniLM-L6-v2 | data/append/sentence-transformers.md | rag-faq.md#1 ✗ | create-chat-completion.md#4 ✗（真 miss：中文 query → 英文文档，跨语言召回弱） |
-| Q9 | DeepSeek Chat Completions 的 temperature 参数取值范围是多少？思考模式下生效吗？ | 介于 0 和 2 之间；思考模式下不生效 | data/append/deepseek-api-create-chat-completion.md | rag-faq.md#2 ✗ | anthropic-api.md#4 ✗（正确块在 top-5） |
-| Q10 | FastAPI 的 web 部分和数据部分分别基于哪个库？ | web 部分基于 Starlette，数据部分基于 Pydantic | data/append/fastapi.md | agent-patterns.md#0 ✗ | fastapi.md#0 ✓ |
+- **用法**：before = `index_v1`（只入库 `data/raw`，7 块）；after = `index_v2`（`data/raw` + `data/append` 29 篇，实测 **175 块**）。索引与 chunks 成对版本化（`index_v1.npz` ↔ `chunks_v1.jsonl`），用 `--index` 指定，绝不读全局缓存。
+- **判定口径（L1）**：`Hit@1` = top-1 块所属文件 == 预期 source；`Recall@5` = top-5 内**属于预期 source 的块**含 key（key 命中但文件不对不算）。
+- **判定口径（L2）**：答案命中 = `keys_all` 全含 / `keys` 任一，匹配前两侧归一化（去 `**`、去空白）；**虚构引用 = 答案里出现的 .md 文件名不在本轮检索 `sources` 里**（措辞与 key 不同 ≠ 幻觉）。
+- **答案可核对性**：所有预期答案均已核对自语料原文（抓取 2026-11-21），无开放题。
 
-## 结论（2026-11-22，L1 对照实验 + L2 人工复核）
+## 一、结果总表
 
-语料从 7 块扩到 175 块（25 倍），对照组 Q1–Q6 的 Hit@1 与 Recall@5 均为 6/6，无退化；Q1–Q6 的 top-1 分数在两套索引下完全一致（0.5440–0.7553，小数点后 6 位相同）——这是预期行为：单块的向量和相似度不依赖语料里还有多少块，真正的风险是干扰项挤进前排。
+| 层 | 索引 | 组 | 题数/轮数 | Hit@1 / 答案命中 | Recall@5 | 虚构引用 |
+|---|---|---|---|---|---|---|
+| L1 检索 | v1（7 块） | v1 | 6 | **6/6 (100%)** | **6/6 (100%)** | — |
+| L1 检索 | v1（7 块） | v2 | 4 | 0/4 (0%) | 0/4 (0%) | — |
+| L1 检索 | v2（175 块） | v1 | 6 | **6/6 (100%)** | **6/6 (100%)** | — |
+| L1 检索 | v2（175 块） | v2 | 4 | 1/4 (25%) | 3/4 (75%) | — |
+| L2 端到端 | v2（175 块） | v1 | 12（×2 轮） | **12/12 (100%)** | — | **0/12** |
+| L2 端到端 | v2（175 块） | v2 | 8（×2 轮） | 6/8 (75%) | — | **0/8** |
 
-- **最小余量 0.035**（Q6：正确答案 0.5440 vs 最强干扰 0.5087）：语料再翻倍，Q6 大概率被挤掉。这就是 rerank 的动机——实测推出来的，不是理论推演。
-- **v2 组可检索性 Hit@1 1/4、Recall@5 3/4**：Q10 ✓；Q7/Q9 的正确块在 top-5 内但 top-1 被相近内容挤掉（news261113 也提到 deepseek-flash、anthropic-api 也有 temperature 说明）；**Q8 是检索层的真 miss**（top-5 内没有任何 sentence-transformers.md 的块）——中文 query 检索英文文档，bge-small-zh 跨语言召回弱，正是语料清洗时"英文 ≤20%"这条约束的实证。**注意 Q8 在 L2 两次都是 ✓，这不能证明检索成功**：all-MiniLM-L6-v2 是著名模型名，模型可能凭参数知识直接作答（假阳性）。判别方法：L2 结果行补记 `sources` 字段重跑，看 Q8 的 sources 是否含 sentence-transformers.md；不含即坐实。这也坐实了"L1 才是 before/after 主指标"的设计理由。W4 做 rerank 时：Q7/Q9 当"挤掉"用例，Q8 当"跨语言"用例。
-- **L2 的"虚构引用 4/20"是误报**：4 条全是措辞差异或语料命名冲突（Q3 回答带加粗标记、Q5 省了"和"、Q9 换说法、Q7 撞上历史公告），逐条对照引用文件都能找到原文，无一条真幻觉。判定逻辑已修正，待重跑。
-- **语料命名冲突**：news251201（2025-12 公告）用 DeepSeek-V3.2 / V3.2-Speciale，pricing（当前）用 deepseek-flash / deepseek-v4-pro，以 pricing 页为准；Q7 题干已加限定，记录见 docs/corpus.md。
+L2 平均步数 3.5（v1 组）/ 3.6（v2 组），带引用率 100%。
 
-## 语料清单（data/append，共 29 篇）
+## 二、L1 明细
 
-- **DeepSeek 官方文档 27 篇**：pricing（模型 & 价格）、api/create-chat-completion、api/create-completion、api/get-user-balance、guides/thinking-mode、guides/tool-calls、guides/kv-cache、guides/vision、guides/anthropic-api、guides/json-mode、guides/chat-prefix-completion、guides/fim-completion、guides/web-tools、guides/responses-api、guides/search、guides/files-api、guides/build-a-chatbot、guides/document-parsing、guides/safety、guides/asr、guides/tts、guides/conversation-title、quick_start/error-codes、quick_start/rate-limit、quick_start/token-usage、updates、news251201、news261113
-- **开源项目 README 2 篇**：fastapi、sentence-transformers（核心节）
-- **体量**：约 5.2 万字符（含 raw），实测 **175 块**（index_v2 vectors (175, 512)），落在 100–200 目标区间；已按切分约束清洗（删长代码/超长表格转列表/段落按句切分），来源与删除记录见 docs/corpus.md。原始抓取件 46 篇在 data/append-excluded/ 可对照。
+### before（index_v1，7 块）
 
-## 实测记录（原始输出）
+| id | group | top1 | hit1 | recall | match_key |
+|---|---|---|---|---|---|
+| Q1 | v1 | rag-faq.md#0 | ✓ | ✓ | 300+800+10%+15% |
+| Q2 | v1 | rag-faq.md#1 | ✓ | ✓ | 召回 20 条 |
+| Q3 | v1 | rag-faq.md#1 | ✓ | ✓ | 切分问题 |
+| Q4 | v1 | rag-faq.md#2 | ✓ | ✓ | 30 到 50 |
+| Q5 | v1 | agent-patterns.md#2 | ✓ | ✓ | 抽取+去重+存储+召回 |
+| Q6 | v1 | agent-patterns.md#0 | ✓ | ✓ | 记录已调用过的工具和参数组合 |
+| Q7 | v2 | agent-patterns.md#0 | ✗ | ✗ | - |
+| Q8 | v2 | rag-faq.md#1 | ✗ | ✗ | - |
+| Q9 | v2 | rag-faq.md#2 | ✗ | ✗ | - |
+| Q10 | v2 | agent-patterns.md#0 | ✗ | ✗ | - |
 
-(.venv) PS D:\agent-rag> python.exe -m eval.run_eval --layer l1 --index data/index_v1.npz --out eval/result_v1.json
+### after（index_v2，175 块）
 
-| group | 题数  | Hit@1      | Recall@5   | 说明               |
-| ----- | --- | ---------- | ---------- | ---------------- |
-| v1    | 6   | 6/6 (100%) | 6/6 (100%) | 对照实验组（原始 2 篇）    |
-| v2    | 4   | 0/4 (0%)   | 0/4 (0%)   | 新增语料可检索性，不计入提升幅度 |
+| id | group | top1 | hit1 | recall | match_key |
+|---|---|---|---|---|---|
+| Q1 | v1 | rag-faq.md#0 | ✓ | ✓ | 300+800+10%+15% |
+| Q2 | v1 | rag-faq.md#1 | ✓ | ✓ | 召回 20 条 |
+| Q3 | v1 | rag-faq.md#1 | ✓ | ✓ | 切分问题 |
+| Q4 | v1 | rag-faq.md#2 | ✓ | ✓ | 30 到 50 |
+| Q5 | v1 | agent-patterns.md#2 | ✓ | ✓ | 抽取+去重+存储+召回 |
+| Q6 | v1 | agent-patterns.md#0 | ✓ | ✓ | 记录已调用过的工具和参数组合 |
+| Q7 | v2 | deepseek-news261113.md#5 | ✗ | ✓ | deepseek-flash+deepseek-v4-pro |
+| Q8 | v2 | deepseek-api-create-chat-completion.md#4 | ✗ | ✗ | - |
+| Q9 | v2 | deepseek-anthropic-api.md#4 | ✗ | ✓ | 0 和 2 |
+| Q10 | v2 | fastapi.md#0 | ✓ | ✓ | Starlette |
 
-### 明细（before）
+## 三、结论
 
-| id  | group | top1                | hit1 | recall | match_key      |
-| --- | ----- | ------------------- | ---- | ------ | -------------- |
-| Q1  | v1    | rag-faq.md#0        | ✓    | ✓      | 300 到 800      |
-| Q2  | v1    | rag-faq.md#1        | ✓    | ✓      | 召回 20 条        |
-| Q3  | v1    | rag-faq.md#1        | ✓    | ✓      | 切分问题，不是模型问题    |
-| Q4  | v1    | rag-faq.md#2        | ✓    | ✓      | 30 到 50        |
-| Q5  | v1    | agent-patterns.md#2 | ✓    | ✓      | 抽取、去重、存储和召回    |
-| Q6  | v1    | agent-patterns.md#0 | ✓    | ✓      | 记录已调用过的工具和参数组合 |
-| Q7  | v2    | agent-patterns.md#0 | ✗    | ✗      | -              |
-| Q8  | v2    | rag-faq.md#1        | ✗    | ✗      | -              |
-| Q9  | v2    | rag-faq.md#2        | ✗    | ✗      | -              |
-| Q10 | v2    | agent-patterns.md#0 | ✗    | ✗      | -              |
+**1. 语料扩 25 倍（7 → 175 块），对照组 Q1–Q6 的检索质量零退化。**
 
-(.venv) PS D:\agent-rag> python.exe -m eval.run_eval --layer l1 --index data/index_v2.npz --out eval/result_v2.json
+Hit@1 与 Recall@5 均 6/6。且 Q1–Q6 的 top-1 分数在两套索引下**完全一致**（0.5440–0.7553，小数点后 6 位相同）——这是预期行为而非 bug：单块向量及其与 query 的余弦值不依赖语料里还有多少块。真正的风险不是"分数变化"，是"干扰项挤进前排"。
 
-| group | 题数  | Hit@1      | Recall@5   | 说明               |
-| ----- | --- | ---------- | ---------- | ---------------- |
-| v1    | 6   | 6/6 (100%) | 6/6 (100%) | 对照实验组（原始 2 篇）    |
-| v2    | 4   | 1/4 (25%)  | 3/4 (75%)  | 新增语料可检索性，不计入提升幅度 |
+**2. 风险是余量，不是命中率。最小余量只有 0.035。**
 
-### 明细（after，Q7 题干修改后需重跑）
+Q6 的正确答案 0.5440，最强干扰（`agent-patterns.md#1`）0.5087。Q1 的余量是 0.151（0.6244 vs 0.4734）。也就是说：**在 175 块这个量级下，向量检索还撑得住；再翻一倍，Q6 这类问题就会开始翻车。** 这是 rerank 的实测动机，不是理论推演。
 
-| id  | group | top1                                     | hit1 | recall | match_key      |
-| --- | ----- | ---------------------------------------- | ---- | ------ | -------------- |
-| Q1  | v1    | rag-faq.md#0                             | ✓    | ✓      | 300 到 800      |
-| Q2  | v1    | rag-faq.md#1                             | ✓    | ✓      | 召回 20 条        |
-| Q3  | v1    | rag-faq.md#1                             | ✓    | ✓      | 切分问题，不是模型问题    |
-| Q4  | v1    | rag-faq.md#2                             | ✓    | ✓      | 30 到 50        |
-| Q5  | v1    | agent-patterns.md#2                      | ✓    | ✓      | 抽取、去重、存储和召回    |
-| Q6  | v1    | agent-patterns.md#0                      | ✓    | ✓      | 记录已调用过的工具和参数组合 |
-| Q7  | v2    | deepseek-news261113.md#5                 | ✗    | ✓      | deepseek-flash |
-| Q8  | v2    | deepseek-api-create-chat-completion.md#4 | ✗    | ✗      | -              |
-| Q9  | v2    | deepseek-anthropic-api.md#4              | ✗    | ✓      | 介于 0 和 2       |
-| Q10 | v2    | fastapi.md#0                             | ✓    | ✓      | Starlette      |
+**3. v2 组三类失败，性质完全不同，处理方式也不同。**
 
-(.venv) PS D:\agent-rag> $env:AGENT_INDEX = "data/index_v2.npz"; python -m eval.run_eval --layer l2 --repeat 2 --out eval/result_l2.json
+| 题 | 现象 | 性质 | 处理 |
+|---|---|---|---|
+| Q7 | 正确块在 top-5，top-1 被 `news261113` 挤掉 | **语料命名冲突**（见第 4 条） | 语料治理，不是模型问题 |
+| Q9 | 正确块在 top-5，top-1 被 `anthropic-api` 挤掉 | **相近内容竞争**（两个页面都讲 temperature） | rerank 的典型用例 |
+| Q8 | top-5 内没有任何 `sentence-transformers.md` 的块 | **跨语言召回失败**：中文 query 检索英文文档 | 语料约束（英文 ≤20%）的实证；或换多语言 embedding |
 
-| group | 题数  | 答案命中        | 带引用          | 虚构引用 | 平均步数 |
-| ----- | --- | ----------- | ------------ | ---- | ---- |
-| v1    | 12  | 10/12 (83%) | 12/12 (100%) | 2/12 | 3.7  |
-| v2    | 8   | 6/8 (75%)   | 8/8 (100%)   | 2/8  | 3.4  |
+**4. Q7 失败源于语料内部矛盾，必须以 `pricing` 页为准。**
 
-### L2 明细（旧判定，4 条"虚构引用"经人工复核均为误报，判定修正后重跑）
+`news251201`（2025-12 公告）用 `DeepSeek-V3.2 / V3.2-Speciale`，`pricing`（当前）用 `deepseek-flash / deepseek-v4-pro`。模型检索到公告就答公告。这不是检索错、也不是生成错，是**语料治理问题**。处理：给来源加时效/优先级元数据，并在评测里显式记录冲突，而不是让模型自己猜。记录见 `docs/corpus.md`。
 
-| id  | 答案命中 | 带引用 | 虚构引用 | 步数  |
-| --- | ---- | --- | ---- | --- |
-| Q3  | ✗    | ✓   | ⚠    | 4   |
-| Q5  | ✗    | ✓   | ⚠    | 3   |
-| Q7  | ✗    | ✓   | ⚠    | 3   |
-| Q9  | ✗    | ✓   | ⚠    | 4   |
+**5. L2 与 L1 的差异揭示了"单次检索"和"Agent 检索"的真实差距。**
 
-（其余 16 行全部 ✓✓-，完整原始 json 在 eval/result_l2.json）
+Q8 在 L1（固定中文 query）是**彻底的 miss**，但在 L2 两轮都答对。为排除"参数知识假阳性"，单独探针验证：
+
+```
+query 改写为：'sentence-transformers README 快速上手 示例 加载模型'
+sources     ：['sentence-transformers.md', 'sentence-transformers.md', 'sentence-transformers.md']
+```
+
+**Agent 把中文问题改写成含英文库名的混合 query，真的检索到了目标文件。** 这是 agentic retrieval 相对单次检索的实测补偿，不是模型凭记忆作答。同时它也说明：**L1 是保守下界，L2 才是用户视角的真实表现**，两者必须都报，不能只挑好看的。
+
+**6. 答案层：v1 组 12/12，v2 组 6/8，虚构引用 0/20。**
+
+唯一持续失败的只有 Q7（语料冲突，两轮都答公告版模型名）。`sources` 与答案引用 100% 对得上，没有出现"标了来源但来源不存在"的情况。
+
+## 四、判定口径的三次修正（这段是评测工作里最费时的部分）
+
+| 轮次 | 原判定 | 问题 | 改成 |
+|---|---|---|---|
+| 1 | key 整串精确匹配 | 答案带 `**` 加粗 → 假阴性（Q3） | 匹配前归一化（去标记/空白） |
+| 2 | 同上 | 「抽取、去重、存储**和**召回」vs 模型省略"和" → 假阴性（Q5） | 改用 `keys_all` 实体列举 |
+| 3 | 同上 | `300～800` vs `300 到 800` → 假阴性（Q1） | 数字实体全含即命中 |
+| — | 虚构引用 = "答案未命中 key 且带引用" | 4 条全误报（措辞差异被当成幻觉） | 虚构引用 = "引用的文件名不在本轮 sources 里" |
+
+**结论：定义"什么算对"比跑分难得多。** 前两版判定会把一个 90% 正确的系统报成 83%，并凭空造出 4 个"幻觉"。
+
+## 五、W4 的输入
+
+| 用例 | 用途 |
+|---|---|
+| Q6（余量 0.035）、Q9（同主题竞争） | rerank 的收益靶子 |
+| Q8（跨语言） | 多语言 embedding 或 query 改写的收益靶子 |
+| Q7（语料冲突） | 来源优先级 / 元数据治理的靶子 |
+
+## 六、复现
+
+```bash
+# 建两套索引（索引与 chunks 自动成对命名）
+python -m app.ingest --index data/index_v1.npz
+python -m app.ingest --index data/index_v2.npz --with-append
+
+# L1
+python -m eval.run_eval --layer l1 --index data/index_v1.npz --out eval/result_v1.json
+python -m eval.run_eval --layer l1 --index data/index_v2.npz --out eval/result_v2.json
+
+# L2（每题独立 session，重复 2 轮）
+AGENT_INDEX=data/index_v2.npz python -m eval.run_eval --layer l2 --repeat 2 --out eval/result_l2.json
+```
+
+L2 的 `session_id` 格式为 `eval-{题号}-{轮次}`，**绝不复用**：复用会让前几题的答案与摘要进上下文，测到的是记忆而不是检索。

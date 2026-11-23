@@ -156,6 +156,8 @@ def eval_end_to_end(questions: list[dict], repeat: int = 1) -> list[dict]:
                 "hallucinated_citation": hallucinated,
                 "steps": len(steps),
                 "terminated_by": result.get("terminated_by", "unknown"),
+                # 记录本轮实际检索到的文件，事后才能判断"答对"是真检索到的还是凭参数知识
+                "sources": sorted({s.get("source", "") for s in (sources or [])}),
                 "answer": answer,
             })
     return results
